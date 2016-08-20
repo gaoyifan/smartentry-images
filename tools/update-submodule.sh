@@ -14,4 +14,4 @@ find $basedir -mindepth 2 -maxdepth 2 -type d -not -path '*/.git/*' -not -path '
 while read dir; do
     cp $basedir/smartentry/smartentry.sh $dir;
 done
-git commit -C $commit_id
+git commit -a -m $commit_id
