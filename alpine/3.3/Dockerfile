@@ -2,7 +2,7 @@ FROM alpine:3.3
 
 MAINTAINER Yifan Gao <docker@yfgao.com>
 
-ENV ASSETS_DIR="/opt/proj/docker"
+ENV ASSETS_DIR="/opt/smartentry/HEAD"
 
 RUN apk add --no-cache bash tar
 

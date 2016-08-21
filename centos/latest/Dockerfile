@@ -2,7 +2,7 @@ FROM centos
 
 MAINTAINER Yifan Gao <docker@yfgao.com>
 
-ENV ASSETS_DIR="/opt/proj/docker"
+ENV ASSETS_DIR="/opt/smartentry/HEAD"
 
 COPY smartentry.sh /sbin/smartentry.sh
 
