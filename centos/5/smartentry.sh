@@ -7,6 +7,7 @@ pwd_orig=$PWD
 export ASSETS_DIR=${ASSETS_DIR:-"/opt/smartentry/HEAD"}
 export ROOTFS_DIR=${ROOTFS_DIR:-"$ASSETS_DIR/rootfs"}
 export CHECKLIST_FILE=${CHECKLIST_FILE:-"$ASSETS_DIR/checklist.md5"}
+export ENV_FILE=${ENV_FILE:-"$ASSETS_DIR/env"}
 export PRE_ENTRY_SCRIPT=${PRE_ENTRY_SCRIPT:-"$ASSETS_DIR/pre-entry.sh"}
 export CHMOD_FILE=${CHMOD_FILE:-"$ASSETS_DIR/chmod.list"}
 export BUILD_SCRIPT=${BUILD_SCRIPT:-"$ASSETS_DIR/build"}
@@ -25,8 +26,24 @@ export ENABLE_PRE_RUN_SCRIPT=${ENABLE_PRE_RUN_SCRIPT:-"true"}
 export ENABLE_FORCE_INIT_VOLUMES_DATA=${ENABLE_FORCE_INIT_VOLUMES_DATA:-"false"}
 export ENABLE_FIX_OWNER_OF_VOLUMES=${ENABLE_FIX_OWNER_OF_VOLUMES:-"false"}
 export ENABLE_FIX_OWNER_OF_VOLUMES_DATA=${ENABLE_FIX_OWNER_OF_VOLUMES_DATA:-"false"}
+export ENABLE_MANDATORY_CHECK_ENV=${ENABLE_MANDATORY_CHECK_ENV:-"true"}
 
 entry_prompt=${entry_prompt:-"smartentry> "}
+
+declare -a required_envs
+if [[ -f $ENV_FILE ]]; then
+    while read env; do
+        env_name=$(eval echo ${env%%=*})
+        env_value=$(eval echo ${env#*=})
+        if [[ -n $env_name ]]; then
+            if ! ( echo $env | grep = > /dev/null ) ; then
+                required_envs+=($env_name)
+            else
+                export $env_name=$env_value
+            fi
+        fi
+    done < $ENV_FILE
+fi
 
 case ${1} in
     build)
@@ -76,6 +93,7 @@ case ${1} in
 
         ;;
 
+    # run a program
     *)
         # set env: HAVE_INITIALIZED
         if [[ -f $INITIALIZED_FLAG ]]; then
@@ -90,6 +108,18 @@ case ${1} in
             echo "$entry_prompt running pre-entry script"
             source $PRE_ENTRY_SCRIPT
         fi
+
+        # mandatory check required env
+        if [[ $ENABLE_MANDATORY_CHECK_ENV == true ]] && [[ ${#required_envs[@]} != 0 ]]; then
+            echo "$entry_prompt checking required environment variables"
+            for required_env in ${required_envs[@]}; do
+                if [[ -z $(eval `echo "\${${reqiured_env}+x}"`) ]]; then
+                    >&2 echo "$entry_prompt environment value $required_env doesn't exist. program exit."
+                    exit 2
+                fi
+            done
+        fi
+
 
         # set env: DOCKER_UID, DOCKER_GID, DOCKER_USER
         if [[ $DOCKER_UID ]]; then
