@@ -7,7 +7,7 @@ if [[ ! -e smartentry ]]; then
     git clone https://github.com/gaoyifan/smartentry.git smartentry
 fi
 cd smartentry
-git fetch origin $tag
+git fetch origin --tag
 commit_id=$(git rev-list -n 1 $tag)
 git reset --hard $commit_id
 cd $basedir
