@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 basedir=$(realpath $1)
 tag=${2:-"master"}
 cd $basedir
