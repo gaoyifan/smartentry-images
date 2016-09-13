@@ -9,3 +9,5 @@ RUN dnf install -y tar && dnf clean all
 COPY smartentry.sh /sbin/smartentry.sh
 
 ENTRYPOINT ["/sbin/smartentry.sh"]
+
+CMD ["run"]

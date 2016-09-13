@@ -9,3 +9,5 @@ RUN apk add --no-cache bash tar
 COPY smartentry.sh /sbin/smartentry.sh
 
 ENTRYPOINT ["/sbin/smartentry.sh"]
+
+CMD ["run"]
