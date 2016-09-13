@@ -38,6 +38,7 @@ export PRE_RUN_SCRIPT=${PRERUN_SCRIPT:-"$ASSETS_DIR/pre-run"}
 export VOLUMES_LIST=${VOLUMES_LIST:-"$ASSETS_DIR/volumes.list"}
 export VOLUMES_ARCHIVE=${VOLUMES_ARCHIVE:-"$ASSETS_DIR/volumes.tar"}
 export INITIALIZED_FLAG=${INITIALIZED_FLAG:-"/var/run/smartentry.initialized"}
+export DOCKER_SHELL=${DOCKER_SHELL:-"/bin/bash"}
 
 export ENABLE_KEEP_USER_MODIFICATION=${ENABLE_KEEP_USER_MODIFICATION:-"true"}
 export ENABLE_CHMOD_AUTO_FIX=${ENABLE_CHMOD_AUTO_FIX:-"true"}
@@ -83,7 +84,7 @@ case ${1} in
                 [[ -e $file_dst ]] && stat -c "%a	%U	%G	$(realpath $file_dst)" $file_dst >> ${CHMOD_FILE}.add
             done
             [[ -f ${CHMOD_FILE} ]] && cat ${CHMOD_FILE} >> ${CHMOD_FILE}.add
-            mv ${CHMOD_FILE}.add ${CHMOD_FILE}
+            [[ -f ${CHMOD_FILE}.add ]] && mv ${CHMOD_FILE}.add ${CHMOD_FILE}
         fi
 
         # save volume data
@@ -155,8 +156,15 @@ case ${1} in
         else
             export DOCKER_USER=root
             export DOCKER_UID=0
-            export DOCKER_GID=0
+            if [[ $DOCKER_GID ]] && [[ $DOCKER_GID != 0 ]]; then
+                >&2 echo "$entry_prompt ERROR: only set DOCKER_GID=$DOCKER_GID, but DOCKER_USER or DOCKER_UID not found. exit."   
+            else
+                export DOCKER_GID=0
+            fi
             export DOCKER_HOME=${DOCKER_HOME:-"/var/empty"}
+        fi
+        if [[ $DOCKER_HOME ]]; then
+            sed -i "s|^\([^:]*:[^:]*:$DOCKER_UID:[^:]*:[^:]*\):[^:]*:\([^:]*\)$|\1:$DOCKER_HOME:\2|g" /etc/passwd
         fi
 
         # init volume data
@@ -218,13 +226,14 @@ case ${1} in
 
         # pre-running script
         if [[ -f $PRE_RUN_SCRIPT ]] && [[ $ENABLE_PRE_RUN_SCRIPT == true ]]; then
-            echo "$entry_prompt pre_running script"
+            echo "$entry_prompt pre-run script"
             $PRE_RUN_SCRIPT
         fi
 
         docker_uid=$DOCKER_UID
         docker_gid=$DOCKER_GID
         docker_user=$DOCKER_USER
+        docker_shell=$DOCKER_SHELL
 
         # unset all environment varibles
         if [[ $ENABLE_UNSET_ENV_VARIBLES == true ]]; then
@@ -244,17 +253,9 @@ case ${1} in
         fi
 
         # run main program
-        echo "$entry_prompt running main program"
+        echo "$entry_prompt running main program(UID=$docker_uid GID=$docker_gid USER=$docker_user)"
         cd $pwd_orig
-
-        if [[ $docker_uid != 0 ]]; then
-            echo "$entry_prompt running with UID=$docker_uid GID=$docker_gid USER=$docker_user"
-            cmd_str=`echo $@`
-            exec su -m -c "$cmd_str" $docker_user
-            exit
-        fi
-
-        "$@"
+        exec su -m -s $docker_shell -c "`echo $@`" $docker_user
 
         ;;
 esac
